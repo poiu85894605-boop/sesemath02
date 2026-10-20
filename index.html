@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메가커피 키오스크 생활수학 앱</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        megayellow: '#FCD34D',
+                        megadarkyellow: '#F59E0B',
+                        megagray: '#1F2937',
+                        megared: '#EF4444'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body {
+            font-family: 'Pretendard', sans-serif;
+            user-select: none;
+        }
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col justify-between text-slate-800">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-yellow-400 border-b-4 border-yellow-500 shadow-md sticky top-0 z-30">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gray-900 text-yellow-400 font-extrabold px-3 py-1 rounded-lg text-xl tracking-wider">
+                    MEGA <span class="text-white text-sm">MATH</span>
+                </div>
+                <h1 class="font-bold text-lg text-gray-900 hidden sm:inline-block">키오스크 생활 수학 교실</h1>
+            </div>
+            
+            <!-- Mode Selector Buttons -->
+            <div class="flex bg-yellow-500/30 p-1 rounded-xl gap-1 items-center">
+                <button id="btn-mode-kiosk" onclick="switchMode('kiosk')" class="px-4 py-2 rounded-lg font-bold text-sm transition-all bg-gray-900 text-yellow-400 shadow">
+                    <i class="fa-solid fa-cash-register mr-1"></i> 키오스크 자유 주문
+                </button>
+                <button id="btn-mode-quiz" onclick="switchMode('quiz')" class="px-4 py-2 rounded-lg font-bold text-sm transition-all text-gray-800 hover:bg-yellow-300">
+                    <i class="fa-solid fa-receipt mr-1"></i> 영수증 오류 찾기 <span id="quiz-badge" class="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full ml-1">미션</span>
+                </button>
+                <button onclick="openOnlineOrderModal()" class="hidden sm:flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-extrabold px-3 py-2 rounded-lg text-xs shadow transition-all animate-pulse ml-1">
+                    <i class="fa-solid fa-envelope-open-text"></i> 요청 주문서 보기
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-5xl mx-auto w-full p-2 sm:p-4 flex-grow relative">
+
+        <!-- ================= MODE 1: KIOSK PRACTICE ================= -->
+        <section id="mode-kiosk" class="block space-y-3">
+            
+            <!-- PERSISTENT PINNED ORDER REQUEST CARD (Always Visible during Kiosk practice) -->
+            <div id="pinned-request-card" class="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-4 border-yellow-400 rounded-2xl p-3.5 sm:p-4 shadow-xl text-white transition-all sticky top-16 z-20">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-700 pb-2 mb-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2.5 py-1 bg-yellow-400 text-gray-900 rounded-lg text-xs font-black flex items-center gap-1">
+                            <i class="fa-solid fa-mobile-screen-button"></i> 스마트폰 요청 메시지
+                        </span>
+                        <span id="pinned-sender-tag" class="text-xs sm:text-sm font-bold text-yellow-300">📱 민지의 주문 요청</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="generateRandomOnlineOrder()" class="px-2.5 py-1 bg-gray-700 hover:bg-gray-600 text-yellow-300 font-extrabold rounded-lg text-xs transition-colors flex items-center gap-1">
+                            <i class="fa-solid fa-arrows-rotate"></i> 새 주문 받기
+                        </button>
+                        <button onclick="togglePinnedCard()" id="btn-toggle-pinned" class="text-gray-300 hover:text-white text-xs font-bold bg-gray-800 px-2 py-1 rounded-lg border border-gray-600">
+                            접기 <i class="fa-solid fa-chevron-up ml-0.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Message Bubble & Real-time Matching Progress -->
+                <div id="pinned-card-body" class="space-y-2">
+                    <div onclick="speakOrderMemo()" class="bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-400/30 rounded-xl p-2.5 text-xs sm:text-sm text-yellow-100 flex items-center justify-between gap-2 cursor-pointer transition-colors group" title="클릭하면 주문서를 읽어드립니다">
+                        <div class="flex items-start gap-2">
+                            <i class="fa-solid fa-comment-dots text-yellow-400 text-base shrink-0 mt-0.5 group-hover:scale-110 transition-transform"></i>
+                            <p id="pinned-memo-text" class="font-medium italic leading-relaxed text-yellow-200">
+                                "엄마! 아메리카노(ICE) 2잔, 딸기라떼 1잔, 초코칩쿠키 2개만 주문해 주세요!"
+                            </p>
+                        </div>
+                        <button class="shrink-0 px-2.5 py-1.5 bg-yellow-400 text-gray-900 rounded-lg text-xs font-black hover:bg-yellow-300 flex items-center gap-1 shadow-sm">
+                            <i class="fa-solid fa-volume-high text-sm"></i> <span class="hidden sm:inline">읽기</span>
+                        </button>
+                    </div>
+
+                    <!-- Checklist showing requested menu vs items currently in cart -->
+                    <div class="bg-gray-800/80 p-2.5 rounded-xl border border-gray-700">
+                        <div class="text-[11px] text-gray-400 font-bold mb-1.5 flex justify-between items-center">
+                            <span>🎯 키오스크 입력 미션 (담은 수량 / 요청 수량)</span>
+                            <span id="mission-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-yellow-500 text-gray-900">담는 중...</span>
+                        </div>
+                        <div id="pinned-items-checklist" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5 text-xs">
+                            <!-- Dynamic rendering of requested items and current cart status -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl border-2 border-gray-200 overflow-hidden flex flex-col md:flex-row min-h-[620px]">
+                
+                <!-- Kiosk Main Screen Left / Center -->
+                <div class="flex-grow flex flex-col border-b md:border-b-0 md:border-r border-gray-200">
+                    
+                    <!-- Kiosk Top Banner & Dining Type Selector -->
+                    <div class="bg-gray-900 text-white p-3 flex justify-between items-center flex-wrap gap-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                            <span class="text-xs font-semibold tracking-wide text-yellow-400">메가커피 주문 키오스크</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button id="dining-takeout" onclick="setDiningType('takeout')" class="px-3 py-1 rounded-full text-xs font-bold border transition-all border-yellow-400 bg-yellow-400 text-gray-900">
+                                <i class="fa-solid fa-bag-shopping mr-1"></i> 포장하기
+                            </button>
+                            <button id="dining-here" onclick="setDiningType('here')" class="px-3 py-1 rounded-full text-xs font-bold border transition-all border-gray-600 text-gray-300 hover:border-yellow-400">
+                                <i class="fa-solid fa-store mr-1"></i> 매장이용
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Menu Categories -->
+                    <nav class="bg-yellow-400 flex border-b border-yellow-500 text-gray-900 font-bold text-sm sm:text-base overflow-x-auto">
+                        <button onclick="filterCategory('coffee')" id="cat-coffee" class="cat-btn flex-1 min-w-[80px] py-3 text-center border-b-4 border-gray-900 bg-yellow-300">
+                            ☕ 커피류 (5)
+                        </button>
+                        <button onclick="filterCategory('beverage')" id="cat-beverage" class="cat-btn flex-1 min-w-[80px] py-3 text-center border-b-4 border-transparent hover:bg-yellow-300">
+                            🥤 음료류 (5)
+                        </button>
+                        <button onclick="filterCategory('cookie')" id="cat-cookie" class="cat-btn flex-1 min-w-[80px] py-3 text-center border-b-4 border-transparent hover:bg-yellow-300">
+                            🍪 쿠키류 (3)
+                        </button>
+                        <button onclick="filterCategory('cake')" id="cat-cake" class="cat-btn flex-1 min-w-[80px] py-3 text-center border-b-4 border-transparent hover:bg-yellow-300">
+                            🍰 케익류 (2)
+                        </button>
+                    </nav>
+
+                    <!-- Product Grid Section -->
+                    <div id="product-grid" class="p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto max-h-[460px] custom-scroll bg-gray-50 flex-grow">
+                        <!-- Dynamic JavaScript Injection -->
+                    </div>
+                </div>
+
+                <!-- Kiosk Cart Sidebar / Bottom Area -->
+                <div class="w-full md:w-80 bg-gray-50 flex flex-col justify-between border-t md:border-t-0">
+                    <div class="p-3 bg-gray-800 text-white flex justify-between items-center">
+                        <h2 class="font-bold text-sm sm:text-base flex items-center">
+                            <i class="fa-solid fa-basket-shopping text-yellow-400 mr-2"></i> 선택한 메뉴
+                        </h2>
+                        <button onclick="clearCart()" class="text-xs text-red-400 hover:text-red-300 underline font-semibold">
+                            <i class="fa-solid fa-trash-can mr-1"></i> 전체삭제
+                        </button>
+                    </div>
+
+                    <!-- Cart Item List -->
+                    <div id="cart-items" class="p-3 flex-grow overflow-y-auto max-h-[220px] md:max-h-full space-y-2 custom-scroll">
+                        <div id="empty-cart-msg" class="text-center py-10 text-gray-400 text-sm">
+                            <i class="fa-solid fa-mug-hot text-3xl mb-2 text-gray-300"></i>
+                            <p>메뉴를 선택하거나<br>상단의 온라인 주문서를 담아주세요.</p>
+                        </div>
+                    </div>
+
+                    <!-- Cart Footer / Summary -->
+                    <div class="p-4 bg-white border-t border-gray-200 shadow-inner">
+                        <div class="flex justify-between items-center mb-1 text-xs text-gray-500">
+                            <span>이용 구분</span>
+                            <span id="summary-dining-type" class="font-bold text-gray-800">포장하기</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-1 text-sm font-semibold">
+                            <span>총 수량</span>
+                            <span><strong id="cart-total-count" class="text-yellow-600 text-base">0</strong> 개</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-4 text-base font-extrabold border-t pt-2">
+                            <span>총 결제금액</span>
+                            <span class="text-xl text-red-600"><span id="cart-total-price">0</span>원</span>
+                        </div>
+
+                        <!-- Order Action Button -->
+                        <button id="btn-checkout" onclick="openOrderConfirmModal()" disabled class="w-full bg-gray-300 text-gray-500 font-extrabold py-3 rounded-xl text-lg shadow transition-all cursor-not-allowed">
+                            주문 확인하기
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================= MODE 2: RECEIPT ERROR QUIZ ================= -->
+        <section id="mode-quiz" class="hidden">
+            <div class="bg-white rounded-2xl shadow-xl border-2 border-gray-200 p-4 sm:p-6">
+                <div class="max-w-2xl mx-auto">
+                    
+                    <!-- Quiz Banner -->
+                    <div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-r-xl mb-6 flex justify-between items-center flex-wrap gap-2">
+                        <div>
+                            <h2 class="font-extrabold text-lg text-gray-900">🔍 생활 수학 미션: 영수증 오류를 찾아라!</h2>
+                            <p class="text-xs sm:text-sm text-gray-600">아래 영수증의 단가, 수량, 합계, 거스름돈 중 **틀린 계산**이 있는지 확인하세요.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button onclick="generateQuizScenario()" class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-extrabold rounded-lg text-xs shadow flex items-center gap-1 transition-transform active:scale-95" title="새로운 영수증 문제 생성">
+                                <i class="fa-solid fa-rotate-right"></i> 새 문제 불러오기
+                            </button>
+                            <div class="text-right border-l border-yellow-300 pl-3">
+                                <div class="text-[11px] text-gray-500 font-bold">현재 점수</div>
+                                <div id="quiz-score" class="text-xl sm:text-2xl font-black text-yellow-600">0점</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Receipt Visual Paper -->
+                    <div class="bg-amber-50/50 p-6 rounded-xl border border-dashed border-gray-400 font-mono shadow-md relative max-w-md mx-auto text-sm text-gray-800 mb-6">
+                        <div class="text-center pb-3 border-b border-gray-300">
+                            <h3 class="font-extrabold text-lg tracking-widest text-gray-900">MEGA COFFEE</h3>
+                            <p class="text-xs text-gray-500">[영수증 / 계산 검토용]</p>
+                            <p class="text-xs text-gray-400 mt-1" id="quiz-receipt-date">2026-09-28 14:30:22</p>
+                        </div>
+
+                        <div class="py-3 border-b border-gray-300">
+                            <div class="flex justify-between font-bold border-b border-gray-200 pb-1 mb-2 text-xs">
+                                <span class="w-1/2">메뉴명</span>
+                                <span class="w-1/6 text-right">단가</span>
+                                <span class="w-1/6 text-right">수량</span>
+                                <span class="w-1/6 text-right">금액</span>
+                            </div>
+                            <div id="quiz-receipt-items" class="space-y-1.5 text-xs">
+                                <!-- Quiz items populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Calculations -->
+                        <div class="py-3 border-b border-gray-300 space-y-1 text-xs">
+                            <div class="flex justify-between font-bold text-sm pt-1">
+                                <span>청구 합계금액</span>
+                                <span id="quiz-receipt-subtotal">0 원</span>
+                            </div>
+                            <div class="flex justify-between text-gray-600">
+                                <span>부가세 (10% 포함)</span>
+                                <span id="quiz-receipt-vat">0 원</span>
+                            </div>
+                        </div>
+
+                        <div class="py-3 border-b border-gray-300 space-y-1 text-xs bg-yellow-50/80 p-2 rounded">
+                            <div class="flex justify-between">
+                                <span id="quiz-receipt-paytype">받은 현금</span>
+                                <span id="quiz-receipt-paid">0 원</span>
+                            </div>
+                            <div class="flex justify-between font-bold text-red-600 text-sm">
+                                <span>거스름돈</span>
+                                <span id="quiz-receipt-change">0 원</span>
+                            </div>
+                        </div>
+
+                        <div class="text-center pt-3 text-[11px] text-gray-400">
+                            <p>이용해주셔서 감사합니다.</p>
+                        </div>
+                    </div>
+
+                    <!-- Quiz Question Controls -->
+                    <div class="bg-gray-50 p-4 sm:p-5 rounded-xl border border-gray-200">
+                        <p class="font-bold text-base text-gray-900 mb-3 text-center" id="quiz-question-title">
+                            ❓ 질문: 위 영수증의 계산 내용 중 오류가 있는 부분은 어디일까요?
+                        </p>
+                        
+                        <div id="quiz-options" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <!-- Quiz choices dynamically rendered -->
+                        </div>
+
+                        <!-- Feedback Box -->
+                        <div id="quiz-feedback" class="hidden mt-4 p-4 rounded-xl text-center text-sm font-bold"></div>
+
+                        <div class="mt-4 text-center">
+                            <button id="btn-next-quiz" onclick="generateQuizScenario()" class="hidden px-6 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-extrabold rounded-xl shadow transition-all">
+                                다음 문제 풀기 <i class="fa-solid fa-arrow-right ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-400 text-xs text-center py-3 border-t border-gray-700">
+        <p>© 2026 메가커피 생활 수학 학습 키오스크 | 초등·성인 디지털 생활수학 교육용 프로그램</p>
+    </footer>
+
+    <!-- Toast Notification Banner -->
+    <div id="toast-msg" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl z-50 hidden flex items-center space-x-2 border-2 border-yellow-400 transition-all transform animate-bounce">
+        <i class="fa-solid fa-circle-check text-yellow-400 text-xl"></i>
+        <span id="toast-text" class="text-xs sm:text-sm font-bold">도착한 주문서의 메뉴가 장바구니에 성공적으로 담겼습니다!</span>
+    </div>
+
+    <!-- ================= MODALS SECTION ================= -->
+
+    <!-- Modal: Online Order Sheet Review & Add To Cart -->
+    <div id="modal-online-order" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border-4 border-yellow-400 animate-fade-in relative">
+            
+            <!-- Modal Header -->
+            <div class="flex justify-between items-start border-b pb-3 mb-3">
+                <div class="flex items-center space-x-3">
+                    <div class="w-11 h-11 rounded-2xl bg-yellow-400 text-gray-900 flex items-center justify-center font-black text-2xl shadow-md">
+                        📱
+                    </div>
+                    <div>
+                        <h3 class="font-extrabold text-lg sm:text-xl text-gray-900">도착한 온라인 주문 요청서</h3>
+                        <p id="online-sender-tag" class="text-xs text-yellow-600 font-extrabold">📩 민지의 메시지 주문 요청</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('modal-online-order')" class="text-gray-400 hover:text-gray-700 text-2xl font-black">&times;</button>
+            </div>
+
+            <!-- KakaoTalk Style Message Bubble -->
+            <div class="mb-4 bg-yellow-50 p-3.5 rounded-2xl border border-yellow-200 text-xs sm:text-sm text-gray-800 shadow-sm relative">
+                <div class="font-extrabold text-yellow-800 mb-1 flex justify-between items-center">
+                    <span class="flex items-center gap-1">
+                        💬 요청 메세지 내용:
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="speakOrderMemo()" class="text-xs bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-2.5 py-1 rounded-lg font-black flex items-center gap-1 shadow-sm transition-transform active:scale-95">
+                            <i class="fa-solid fa-volume-high"></i> 주문서 읽기
+                        </button>
+                        <button onclick="generateRandomOnlineOrder()" class="text-blue-600 hover:text-blue-800 underline font-bold text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-arrows-rotate"></i> 다른 주문서
+                        </button>
+                    </div>
+                </div>
+                <p id="online-order-memo" onclick="speakOrderMemo()" class="font-medium leading-relaxed italic text-gray-900 cursor-pointer hover:text-yellow-900 transition-colors" title="클릭하면 주문서를 읽어드립니다">
+                    "엄마! 회사 동료분들과 함께 먹게 메가커피에서 아메리카노(ICE) 2잔, 딸기라떼 1잔, 초코칩쿠키 2개만 주문해 주세요!"
+                </p>
+            </div>
+
+            <!-- Itemized Checklist & Calculation Table -->
+            <div class="mb-5 bg-gray-50 p-3.5 rounded-2xl border border-gray-200">
+                <div class="flex justify-between items-center mb-2 pb-1 border-b border-gray-200">
+                    <h4 class="font-extrabold text-xs text-gray-600 flex items-center gap-1">
+                        <i class="fa-solid fa-list-check text-yellow-500"></i> 주문서 내용 확인하기
+                    </h4>
+                    <span class="text-[11px] text-gray-500 font-semibold">단가 × 요청수량 = 금액</span>
+                </div>
+
+                <div id="online-order-item-list" class="space-y-2 text-xs sm:text-sm max-h-48 overflow-y-auto custom-scroll pr-1">
+                    <!-- Javascript Dynamic Checkboxes & Items Injection -->
+                </div>
+
+                <!-- Math Total Summary Box -->
+                <div class="border-t-2 border-dashed border-gray-300 mt-3 pt-2.5 flex justify-between items-center font-black text-sm sm:text-base text-gray-900">
+                    <span>요청 항목 총 금액</span>
+                    <span class="text-red-600 text-lg"><span id="online-order-total-price">0</span> 원</span>
+                </div>
+            </div>
+
+            <!-- Notice Banner -->
+            <div class="bg-blue-50 border border-blue-200 text-blue-900 p-3 rounded-2xl text-xs mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-lightbulb text-yellow-500 text-base shrink-0"></i>
+                <span>요청 메시지는 키오스크 화면 상단에 <strong>고정 고지</strong>되므로, 메시지를 보면서 메뉴와 수량을 키오스크에서 직접 선택하여 장바구니에 담아주세요!</span>
+            </div>
+
+            <!-- Action Buttons: Confirm & Add -->
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="closeModal('modal-online-order')" class="py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-extrabold rounded-2xl text-xs sm:text-sm transition-all">
+                    닫기
+                </button>
+                <button onclick="startManualKioskOrder()" class="col-span-2 py-3.5 bg-yellow-400 hover:bg-yellow-500 active:scale-95 text-gray-900 font-black rounded-2xl text-sm sm:text-base shadow-lg flex items-center justify-center gap-2 transition-all">
+                    <i class="fa-solid fa-hand-pointer text-lg"></i> 메세지 보며 키오스크에 직접 담기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Product Option / Quantity Selector -->
+    <div id="modal-option" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl">
+            <div class="flex justify-between items-start border-b pb-3">
+                <div>
+                    <h3 id="opt-item-title" class="font-extrabold text-lg text-gray-900">메뉴 이름</h3>
+                    <p id="opt-item-price" class="text-yellow-600 font-bold text-sm">0원</p>
+                </div>
+                <button onclick="closeModal('modal-option')" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            </div>
+
+            <!-- Temperature Option (For Beverages) -->
+            <div id="opt-temp-container" class="my-4">
+                <label class="block text-xs font-bold text-gray-500 mb-2">온도 선택</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="temp-ice" onclick="selectTemp('ICE')" class="py-2.5 rounded-xl border-2 border-blue-400 bg-blue-50 text-blue-700 font-extrabold text-sm flex items-center justify-center">
+                        🧊 ICE (시원하게)
+                    </button>
+                    <button id="temp-hot" onclick="selectTemp('HOT')" class="py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-extrabold text-sm flex items-center justify-center">
+                        🔥 HOT (따뜻하게)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quantity Controls -->
+            <div class="my-4 bg-gray-50 p-3 rounded-xl flex justify-between items-center">
+                <span class="text-sm font-bold text-gray-700">수량 선택</span>
+                <div class="flex items-center space-x-3">
+                    <button onclick="changeModalQty(-1)" class="w-8 h-8 rounded-lg bg-gray-200 hover:bg-gray-300 font-black text-gray-700 flex items-center justify-center">-</button>
+                    <span id="opt-item-qty" class="font-black text-base w-6 text-center">1</span>
+                    <button onclick="changeModalQty(1)" class="w-8 h-8 rounded-lg bg-yellow-400 hover:bg-yellow-500 font-black text-gray-900 flex items-center justify-center">+</button>
+                </div>
+            </div>
+
+            <!-- Price Subtotal Calculation -->
+            <div class="flex justify-between items-center py-2 border-t font-bold">
+                <span class="text-sm text-gray-600">총 금액</span>
+                <span class="text-lg text-red-600"><span id="opt-item-total" class="font-extrabold">0</span>원</span>
+            </div>
+
+            <button onclick="addCurrentItemToCart()" class="w-full mt-3 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-extrabold py-3 rounded-xl shadow transition-all">
+                장바구니에 담기
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Modal: Order Confirmation -->
+    <div id="modal-order-confirm" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl">
+            <div class="text-center border-b pb-3">
+                <h3 class="font-black text-xl text-gray-900">📋 주문서 확인하기</h3>
+                <p class="text-xs text-gray-500">주문 내역과 총 금액이 맞는지 최종 확인하세요.</p>
+            </div>
+
+            <!-- Confirmation List -->
+            <div class="my-4 max-h-48 overflow-y-auto space-y-2 custom-scroll border p-3 rounded-xl bg-gray-50" id="confirm-item-list">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Math Breakdown -->
+            <div class="bg-yellow-50 p-3 rounded-xl border border-yellow-200 space-y-1 text-sm mb-4">
+                <div class="flex justify-between text-gray-600">
+                    <span>이용 방식:</span>
+                    <span id="confirm-dining" class="font-bold text-gray-800">포장하기</span>
+                </div>
+                <div class="flex justify-between text-gray-600">
+                    <span>총 주문 개수:</span>
+                    <span class="font-bold text-gray-800"><span id="confirm-count">0</span> 개</span>
+                </div>
+                <div class="flex justify-between font-black text-base text-gray-900 border-t border-yellow-300 pt-1 mt-1">
+                    <span>최종 결제 금액:</span>
+                    <span class="text-red-600 text-lg"><span id="confirm-total">0</span> 원</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="closeModal('modal-order-confirm')" class="py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-extrabold rounded-xl text-sm">
+                    수정하기
+                </button>
+                <button onclick="openPaymentSelectModal()" class="py-3 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-extrabold rounded-xl text-sm shadow">
+                    결제 수단 선택
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal: Payment Method Selection -->
+    <div id="modal-payment-select" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl text-center">
+            <h3 class="font-black text-xl text-gray-900 mb-1">💳 결제 수단 선택</h3>
+            <p class="text-xs text-gray-500 mb-5">원하시는 결제 방법을 선택해 주세요.</p>
+
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <!-- Card Option -->
+                <button onclick="processCardPayment()" class="p-4 rounded-xl border-2 border-gray-200 hover:border-yellow-400 hover:bg-yellow-50 flex flex-col items-center justify-center gap-2 group transition-all">
+                    <i class="fa-solid fa-credit-card text-3xl text-blue-600 group-hover:scale-110 transition-transform"></i>
+                    <span class="font-extrabold text-gray-800 text-sm">신용/체크카드</span>
+                </button>
+
+                <!-- Cash Option -->
+                <button onclick="openCashPaymentModal()" class="p-4 rounded-xl border-2 border-gray-200 hover:border-yellow-400 hover:bg-yellow-50 flex flex-col items-center justify-center gap-2 group transition-all">
+                    <i class="fa-solid fa-money-bill-wave text-3xl text-green-600 group-hover:scale-110 transition-transform"></i>
+                    <span class="font-extrabold text-gray-800 text-sm">현금 결제</span>
+                </button>
+            </div>
+
+            <button onclick="closeModal('modal-payment-select')" class="w-full py-2.5 text-xs text-gray-500 hover:text-gray-800 font-bold">
+                취소하고 돌아가기
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Modal: Cash Payment Math Practice -->
+    <div id="modal-cash-math" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl">
+            <div class="text-center border-b pb-3">
+                <div class="inline-block bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded-full font-bold mb-1">
+                    🧮 현금 계산 실습
+                </div>
+                <h3 class="font-black text-xl text-gray-900">거스름돈을 계산해 보세요!</h3>
+            </div>
+
+            <div class="my-4 bg-gray-50 p-4 rounded-xl space-y-3">
+                <div class="flex justify-between items-center text-sm font-semibold">
+                    <span class="text-gray-600">내야 할 총 금액:</span>
+                    <span class="text-lg font-black text-red-600"><span id="cash-required-amount">0</span> 원</span>
+                </div>
+
+                <!-- Select Cash Given -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5">손님이 제출할 지폐를 선택하세요:</label>
+                    <div class="grid grid-cols-3 gap-2" id="cash-note-buttons">
+                        <!-- Money choices dynamically set -->
+                    </div>
+                </div>
+
+                <!-- Math Input Quiz -->
+                <div id="change-input-section" class="hidden border-t pt-3 mt-3">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold text-gray-700">지불한 금액: <span id="cash-given-display" class="text-blue-600 font-black">0</span>원</span>
+                    </div>
+                    <label class="block text-xs font-extrabold text-gray-800 mb-1">
+                        👉 돌려받아야 할 거스름돈은 얼마일까요? (원)
+                    </label>
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" id="user-change-input" placeholder="숫자 키패드를 터치하세요" readonly class="w-full border-2 border-yellow-400 rounded-xl px-3 py-2 text-xl font-black text-center bg-yellow-50 focus:outline-none text-gray-900 shadow-inner">
+                    </div>
+
+                    <!-- 화면 터치 키패드 (Kiosk On-Screen Keypad) -->
+                    <div class="bg-gray-100 p-2.5 rounded-2xl border border-gray-300 shadow-inner">
+                        <div class="text-[11px] font-bold text-gray-500 text-center mb-2 flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-calculator text-yellow-600"></i> 화면 키패드를 눌러 숫자를 입력하세요
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5 text-lg font-black">
+                            <button type="button" onclick="appendNumKey('1')" class="py-2.5 bg-white hover:bg-yellow-200 active:bg-yellow-300 active:scale-95 text-gray-900 rounded-xl border border-gray-300 shadow-sm transition-all">1</button>
+                            <button type="button" onclick="appendNumKey('2')" class="py-2.5 bg-white hover:bg-yellow-200 active:bg-yellow-300 active:scale-95 text-gray-900 rounded-xl border border-gray-300 shadow-sm transition-all">2</button>
+                            <button type="button" onclick="appendNumKey('3')" class="py-2.5 bg-white hover:bg-yellow-200 active:bg-yellow-300 active:scale-95 text-gray-900 rounded-xl border border-gray-300 shadow-sm transition-all">3</button>
+                            <button type="button" onclick="appendNumKey('4')" class="py-2.5 bg-white hover:bg-yellow-200 active:bg-yellow-300 active:scale-95 text-gray-900 rounded-xl border border-gray-300 shadow-sm transition-all">4</button>
+                            <button type="button" onclick="appendNumKey('5')" class="py-2.5 bg-white hover:bg-yellow-200 active:bg-yellow-300 active:scale-95 text-gray-900 rounded-xl border border-gray-300 shadow-sm transition-all">5</button>
+                            <button type="button" onclick="appendNumKey('6')" class="py-2.5 bg-white hover:bg-yellow-200 active:bg-yellow-300 active:scale-95 text-gray-900 rounded-xl border border-gray-300 shadow-sm transition-all">6</button>
+                            <button type="button" onclick="appendNumKey('7')" class="py-2.5 bg-white hover:bg-yellow-200 active:bg-yellow-300 active:scale-95 text-gray-900 rounded-xl border border-gray-300 shadow-sm transition-all">7</button>
+                            <button type="button" onclick="appendNumKey('8')" class="py-2.5 bg-white hover:bg-yellow-200 active:bg-yellow-300 active:scale-95 text-gray-900 rounded-xl border border-gray-300 shadow-sm transition-all">8</button>
+                            <button type="button" onclick="appendNumKey('9')" class="py-2.5 bg-white hover:bg-yellow-200 active:bg-yellow-300 active:scale-95 text-gray-900 rounded-xl border border-gray-300 shadow-sm transition-all">9</button>
+                            <button type="button" onclick="clearNumKey()" class="py-2.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl border border-red-200 shadow-sm text-xs font-black active:scale-95 transition-all">전체삭제</button>
+                            <button type="button" onclick="appendNumKey('0')" class="py-2.5 bg-white hover:bg-yellow-200 active:bg-yellow-300 active:scale-95 text-gray-900 rounded-xl border border-gray-300 shadow-sm transition-all">0</button>
+                            <button type="button" onclick="backspaceNumKey()" class="py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl border border-amber-200 shadow-sm text-sm font-black active:scale-95 transition-all"><i class="fa-solid fa-delete-left"></i></button>
+                        </div>
+                        <button type="button" onclick="verifyChangeMath()" class="w-full mt-2.5 py-3 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-extrabold rounded-xl text-sm shadow transition-all flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-circle-check"></i> 거스름돈 입력 정답 확인
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Feedback Text -->
+                <div id="cash-math-feedback" class="hidden text-xs font-bold p-2.5 rounded-lg text-center"></div>
+            </div>
+
+            <div class="flex justify-between">
+                <button onclick="closeModal('modal-cash-math')" class="py-2.5 px-4 bg-gray-200 text-gray-700 font-bold rounded-xl text-xs">
+                    취소
+                </button>
+                <button id="btn-complete-cash-pay" onclick="completePayment('현금결제')" disabled class="py-2.5 px-5 bg-gray-300 text-gray-500 font-extrabold rounded-xl text-xs shadow cursor-not-allowed">
+                    결제 완료하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal: Final Receipt Modal -->
+    <div id="modal-receipt" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl text-center">
+            <div class="text-green-600 text-4xl mb-2">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h3 class="font-black text-xl text-gray-900 mb-1">주문이 완료되었습니다!</h3>
+            <p class="text-xs text-gray-500 mb-4">주문번호를 확인하고 음료를 받아주세요.</p>
+
+            <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 font-mono text-left text-xs space-y-2 mb-4">
+                <div class="text-center font-extrabold text-xl text-gray-900 border-b pb-2">
+                    주문번호: <span id="receipt-order-num" class="text-red-600">000</span>
+                </div>
+                <div class="text-[11px] text-gray-500 text-center" id="receipt-timestamp">
+                    2026-09-28 00:00:00
+                </div>
+                <div id="receipt-item-rows" class="border-t border-b py-2 space-y-1">
+                    <!-- Dynamic -->
+                </div>
+                <div class="flex justify-between font-extrabold text-sm text-gray-900 pt-1">
+                    <span>총 결제금액:</span>
+                    <span id="receipt-total-sum">0원</span>
+                </div>
+                <div class="flex justify-between text-gray-600 text-[11px]">
+                    <span>결제수단:</span>
+                    <span id="receipt-pay-method" class="font-bold">신용카드</span>
+                </div>
+                <div id="receipt-cash-details" class="hidden flex justify-between text-gray-600 text-[11px]">
+                    <span>받은금액/거스름돈:</span>
+                    <span id="receipt-change-info" class="font-bold">0원 / 0원</span>
+                </div>
+            </div>
+
+            <button onclick="finishOrderAndReset()" class="w-full py-3 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-extrabold rounded-xl shadow">
+                확인 (처음으로 돌아가기)
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        // Menu Data Master
+        const menuData = [
+            // Coffee (5)
+            { id: 101, name: '아메리카노', category: 'coffee', price: 2000, tempOption: true, icon: '☕', desc: '메가커피 대표 진한 풍미의 아메리카노' },
+            { id: 102, name: '카페라떼', category: 'coffee', price: 2900, tempOption: true, icon: '🥛', desc: '고소한 우유와 에스프레소의 조화' },
+            { id: 103, name: '바닐라라떼', category: 'coffee', price: 3400, tempOption: true, icon: '🍯', desc: '달콤한 바닐라 향이 가득한 라떼' },
+            { id: 104, name: '메가리카노', category: 'coffee', price: 3000, tempOption: true, icon: '🐘', desc: '1L 대용량으로 즐기는 아메리카노' },
+            { id: 105, name: '콜드브루', category: 'coffee', price: 3300, tempOption: true, icon: '🧊', desc: '깔끔하고 깔끔한 풍미의 콜드브루' },
+
+            // Beverage (5)
+            { id: 201, name: '딸기라떼', category: 'beverage', price: 3700, tempOption: false, defaultTemp: 'ICE', icon: '🍓', desc: '상큼한 딸기가 씹히는 라떼' },
+            { id: 202, name: '청포도에이드', category: 'beverage', price: 3500, tempOption: false, defaultTemp: 'ICE', icon: '🍇', desc: '톡톡 쏘는 청량한 청포도 에이드' },
+            { id: 203, name: '플레인퐁크러쉬', category: 'beverage', price: 3900, tempOption: false, defaultTemp: 'ICE', icon: '🌾', desc: '조리퐁이 가득 올라간 인기 쉐이크' },
+            { id: 204, name: '초코허니퐁크러쉬', category: 'beverage', price: 3900, tempOption: false, defaultTemp: 'ICE', icon: '🍫', desc: '진한 초코와 조리퐁의 달콤함' },
+            { id: 205, name: '녹차라떼', category: 'beverage', price: 3500, tempOption: true, icon: '🍵', desc: '쌉싸름하고 부드러운 그린티 라떼' },
+
+            // Cookie (3)
+            { id: 301, name: '초코칩쿠키', category: 'cookie', price: 2000, tempOption: false, icon: '🍪', desc: '초코칩이 콕콕 박힌 쫀득한 쿠키' },
+            { id: 302, name: '마카다미아쿠키', category: 'cookie', price: 2000, tempOption: false, icon: '🥜', desc: '고소한 마카다미아가 가득한 쿠키' },
+            { id: 303, name: '로투스쿠키', category: 'cookie', price: 1800, tempOption: false, icon: '🥠', desc: '시나몬 향이 감도는 바삭한 쿠키' },
+
+            // Cake (2)
+            { id: 401, name: '치즈케이크', category: 'cake', price: 3500, tempOption: false, icon: '🧀', desc: '진하고 부드러운 풍미의 뉴욕치즈케이크' },
+            { id: 402, name: '초코무스케이크', category: 'cake', price: 3800, tempOption: false, icon: '🍰', desc: '입안에서 입에서 녹는 달콤한 초코무스' }
+        ];
+
+        // Global Application State
+        let currentCategory = 'coffee';
+        let diningType = 'takeout';
+        let cart = [];
+        let selectedItemForModal = null;
+        let selectedModalTemp = 'ICE';
+        let selectedModalQty = 1;
+        let cashGivenAmount = 0;
+        let quizScore = 0;
+        let currentQuizData = null;
+        let currentOnlineOrder = null;
+        let isPinnedCardFolded = false;
+
+        function speakText(text) {
+            if (!('speechSynthesis' in window)) {
+                showToast("⚠️ 이 브라우저는 음성 읽기(TTS) 기능을 지원하지 않습니다.");
+                return;
+            }
+
+            // 기존 음성 출력 중지
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ko-KR';
+            utterance.rate = 0.95; // 읽기 속도 (약간 천천히)
+            utterance.pitch = 1.0;  // 톤
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function speakOrderMemo() {
+            if (!currentOnlineOrder) return;
+            const senderName = currentOnlineOrder.senderTag.replace('📱 ', '');
+            const readText = `${senderName}에서 온 주문 요청입니다. ${currentOnlineOrder.memo}`;
+            
+            speakText(readText);
+            showToast("🔊 주문서 내용을 읽어드리고 있습니다.");
+        }
+
+        window.onload = function() {
+            renderProducts();
+            generateRandomOnlineOrder();
+            updateCartUI();
+            generateQuizScenario();
+        };
+
+        function openModal(id) {
+            const m = document.getElementById(id);
+            if (m) m.classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            const m = document.getElementById(id);
+            if (m) m.classList.add('hidden');
+        }
+
+        function togglePinnedCard() {
+            const body = document.getElementById('pinned-card-body');
+            const btn = document.getElementById('btn-toggle-pinned');
+            isPinnedCardFolded = !isPinnedCardFolded;
+
+            if (isPinnedCardFolded) {
+                body.classList.add('hidden');
+                btn.innerHTML = '펼치기 <i class="fa-solid fa-chevron-down ml-0.5"></i>';
+            } else {
+                body.classList.remove('hidden');
+                btn.innerHTML = '접기 <i class="fa-solid fa-chevron-up ml-0.5"></i>';
+            }
+        }
+
+        function switchMode(mode) {
+            const kioskSec = document.getElementById('mode-kiosk');
+            const quizSec = document.getElementById('mode-quiz');
+            const btnKiosk = document.getElementById('btn-mode-kiosk');
+            const btnQuiz = document.getElementById('btn-mode-quiz');
+
+            if (mode === 'kiosk') {
+                kioskSec.classList.remove('hidden');
+                quizSec.classList.add('hidden');
+                btnKiosk.className = "px-4 py-2 rounded-lg font-bold text-sm transition-all bg-gray-900 text-yellow-400 shadow";
+                btnQuiz.className = "px-4 py-2 rounded-lg font-bold text-sm transition-all text-gray-800 hover:bg-yellow-300";
+            } else {
+                kioskSec.classList.add('hidden');
+                quizSec.classList.remove('hidden');
+                btnQuiz.className = "px-4 py-2 rounded-lg font-bold text-sm transition-all bg-gray-900 text-yellow-400 shadow";
+                btnKiosk.className = "px-4 py-2 rounded-lg font-bold text-sm transition-all text-gray-800 hover:bg-yellow-300";
+            }
+        }
+
+        function setDiningType(type) {
+            diningType = type;
+            const btnTakeout = document.getElementById('dining-takeout');
+            const btnHere = document.getElementById('dining-here');
+            const summaryText = document.getElementById('summary-dining-type');
+
+            if (type === 'takeout') {
+                btnTakeout.className = "px-3 py-1 rounded-full text-xs font-bold border transition-all border-yellow-400 bg-yellow-400 text-gray-900";
+                btnHere.className = "px-3 py-1 rounded-full text-xs font-bold border transition-all border-gray-600 text-gray-300 hover:border-yellow-400";
+                summaryText.textContent = "포장하기";
+            } else {
+                btnHere.className = "px-3 py-1 rounded-full text-xs font-bold border transition-all border-yellow-400 bg-yellow-400 text-gray-900";
+                btnTakeout.className = "px-3 py-1 rounded-full text-xs font-bold border transition-all border-gray-600 text-gray-300 hover:border-yellow-400";
+                summaryText.textContent = "매장이용";
+            }
+        }
+
+        function filterCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.classList.remove('border-gray-900', 'bg-yellow-300');
+                btn.classList.add('border-transparent');
+            });
+
+            const activeBtn = document.getElementById(`cat-${cat}`);
+            if (activeBtn) {
+                activeBtn.classList.add('border-gray-900', 'bg-yellow-300');
+                activeBtn.classList.remove('border-transparent');
+            }
+            renderProducts();
+        }
+
+        function renderProducts() {
+            const grid = document.getElementById('product-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            const filtered = menuData.filter(item => item.category === currentCategory);
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-3 rounded-2xl border-2 border-gray-200 hover:border-yellow-400 transition-all shadow-sm hover:shadow-md flex flex-col justify-between cursor-pointer group";
+                card.onclick = () => openOptionModal(item);
+
+                card.innerHTML = `
+                    <div class="text-center">
+                        <div class="text-4xl mb-2 group-hover:scale-110 transition-transform">${item.icon}</div>
+                        <h3 class="font-extrabold text-sm text-gray-900 leading-tight mb-1">${item.name}</h3>
+                        <p class="text-[11px] text-gray-400 line-clamp-2 mb-2">${item.desc}</p>
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+                        <span class="font-black text-sm text-gray-900">${item.price.toLocaleString()}원</span>
+                        <span class="bg-yellow-400 text-gray-900 text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">+</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function openOptionModal(item) {
+            selectedItemForModal = item;
+            selectedModalQty = 1;
+            selectedModalTemp = item.tempOption ? 'ICE' : (item.defaultTemp || '');
+
+            document.getElementById('opt-item-title').textContent = item.name;
+            document.getElementById('opt-item-price').textContent = `${item.price.toLocaleString()}원`;
+            document.getElementById('opt-item-qty').textContent = selectedModalQty;
+
+            const tempContainer = document.getElementById('opt-temp-container');
+            if (item.tempOption) {
+                tempContainer.classList.remove('hidden');
+                selectTemp('ICE');
+            } else {
+                tempContainer.classList.add('hidden');
+            }
+
+            updateModalPrice();
+            openModal('modal-option');
+        }
+
+        function selectTemp(temp) {
+            selectedModalTemp = temp;
+            const btnIce = document.getElementById('temp-ice');
+            const btnHot = document.getElementById('temp-hot');
+
+            if (temp === 'ICE') {
+                btnIce.className = "py-2.5 rounded-xl border-2 border-blue-400 bg-blue-50 text-blue-700 font-extrabold text-sm flex items-center justify-center";
+                btnHot.className = "py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-extrabold text-sm flex items-center justify-center";
+            } else {
+                btnHot.className = "py-2.5 rounded-xl border-2 border-red-400 bg-red-50 text-red-700 font-extrabold text-sm flex items-center justify-center";
+                btnIce.className = "py-2.5 rounded-xl border-2 border-gray-200 text-gray-600 font-extrabold text-sm flex items-center justify-center";
+            }
+        }
+
+        function changeModalQty(delta) {
+            selectedModalQty = Math.max(1, selectedModalQty + delta);
+            document.getElementById('opt-item-qty').textContent = selectedModalQty;
+            updateModalPrice();
+        }
+
+        function updateModalPrice() {
+            const total = (selectedItemForModal ? selectedItemForModal.price : 0) * selectedModalQty;
+            document.getElementById('opt-item-total').textContent = total.toLocaleString();
+        }
+
+        function addCurrentItemToCart() {
+            if (!selectedItemForModal) return;
+
+            const itemTemp = selectedItemForModal.tempOption ? selectedModalTemp : '';
+            const existingIndex = cart.findIndex(i => i.id === selectedItemForModal.id && i.temp === itemTemp);
+
+            if (existingIndex > -1) {
+                cart[existingIndex].qty += selectedModalQty;
+            } else {
+                cart.push({
+                    id: selectedItemForModal.id,
+                    name: selectedItemForModal.name,
+                    price: selectedItemForModal.price,
+                    qty: selectedModalQty,
+                    temp: itemTemp,
+                    icon: selectedItemForModal.icon
+                });
+            }
+
+            closeModal('modal-option');
+            updateCartUI();
+            showToast(`🛒 '${selectedItemForModal.name}' ${selectedModalQty}개가 장바구니에 담겼습니다.`);
+        }
+
+        function changeCartQty(index, delta) {
+            cart[index].qty += delta;
+            if (cart[index].qty <= 0) {
+                cart.splice(index, 1);
+            }
+            updateCartUI();
+        }
+
+        function clearCart() {
+            cart = [];
+            updateCartUI();
+        }
+
+        function getCartGrandTotal() {
+            return cart.reduce((total, item) => total + (item.price * item.qty), 0);
+        }
+
+        function updateCartUI() {
+            const container = document.getElementById('cart-items');
+            const totalCountEl = document.getElementById('cart-total-count');
+            const totalPriceEl = document.getElementById('cart-total-price');
+            const checkoutBtn = document.getElementById('btn-checkout');
+
+            if (!container) return;
+
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div id="empty-cart-msg" class="text-center py-10 text-gray-400 text-sm">
+                        <i class="fa-solid fa-mug-hot text-3xl mb-2 text-gray-300"></i>
+                        <p>메뉴를 선택하거나<br>상단의 요청 메시지를 참고하여 담아주세요.</p>
+                    </div>
+                `;
+                totalCountEl.textContent = '0';
+                totalPriceEl.textContent = '0';
+                checkoutBtn.disabled = true;
+                checkoutBtn.className = "w-full bg-gray-300 text-gray-500 font-extrabold py-3 rounded-xl text-lg shadow transition-all cursor-not-allowed";
+                updatePinnedChecklistProgress();
+                return;
+            }
+
+            let totalQty = 0;
+            let totalPrice = 0;
+            container.innerHTML = '';
+
+            cart.forEach((item, index) => {
+                const itemTotal = item.price * item.qty;
+                totalQty += item.qty;
+                totalPrice += itemTotal;
+
+                const row = document.createElement('div');
+                row.className = "bg-white p-2.5 rounded-xl border border-gray-200 flex justify-between items-center text-xs shadow-sm";
+                row.innerHTML = `
+                    <div class="flex-grow pr-2">
+                        <div class="font-extrabold text-gray-900">
+                            ${item.icon} ${item.name} 
+                            ${item.temp ? `<span class="${item.temp==='ICE'?'text-blue-500':'text-red-500'}">(${item.temp})</span>` : ''}
+                        </div>
+                        <div class="text-gray-500 font-medium">${item.price.toLocaleString()}원</div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="flex items-center border rounded-lg overflow-hidden bg-gray-50">
+                            <button onclick="changeCartQty(${index}, -1)" class="px-2 py-0.5 bg-gray-200 font-bold hover:bg-gray-300">-</button>
+                            <span class="px-2 font-black">${item.qty}</span>
+                            <button onclick="changeCartQty(${index}, 1)" class="px-2 py-0.5 bg-yellow-400 font-bold hover:bg-yellow-500">+</button>
+                        </div>
+                        <span class="font-extrabold text-red-600 w-14 text-right">${itemTotal.toLocaleString()}원</span>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            totalCountEl.textContent = totalQty;
+            totalPriceEl.textContent = totalPrice.toLocaleString();
+
+            checkoutBtn.disabled = false;
+            checkoutBtn.className = "w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-extrabold py-3 rounded-xl text-lg shadow transition-all cursor-pointer transform active:scale-95";
+
+            updatePinnedChecklistProgress();
+        }
+
+        const sendersList = [
+            "📱 딸 민지의 모바일 주문서",
+            "📱 동아리 선배의 음료 요청",
+            "📱 아들 후니의 디저트 주문",
+            "📱 직장 동료 유진씨의 커스텀 주문",
+            "📱 스터디 모임 박팀장님의 대량 주문"
+        ];
+
+        function generateRandomOnlineOrder() {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+
+            const count = Math.floor(Math.random() * 3) + 2;
+            const shuffledMenu = [...menuData].sort(() => 0.5 - Math.random());
+            const selectedMenu = shuffledMenu.slice(0, count);
+
+            const items = selectedMenu.map(m => {
+                const qty = Math.floor(Math.random() * 3) + 1;
+                const temp = m.tempOption ? (Math.random() < 0.6 ? 'ICE' : 'HOT') : (m.defaultTemp || '');
+                return {
+                    id: m.id,
+                    name: m.name,
+                    price: m.price,
+                    icon: m.icon,
+                    temp: temp,
+                    qty: qty
+                };
+            });
+
+            const randomSender = sendersList[Math.floor(Math.random() * sendersList.length)];
+            const itemsSummaryText = items.map(i => `${i.name}${i.temp ? `(${i.temp})` : ''} ${i.qty}개`).join(', ');
+            const memoText = `안녕하세요! 키오스크 주문 부탁드려요: ${itemsSummaryText} 부탁드립니다!`;
+
+            currentOnlineOrder = {
+                senderTag: randomSender,
+                memo: memoText,
+                items: items
+            };
+
+            // Update Pinned Card on Kiosk screen
+            document.getElementById('pinned-sender-tag').textContent = currentOnlineOrder.senderTag;
+            document.getElementById('pinned-memo-text').textContent = `"${currentOnlineOrder.memo}"`;
+
+            renderOnlineOrderModalUI();
+            updatePinnedChecklistProgress();
+        }
+
+        function updatePinnedChecklistProgress() {
+            if (!currentOnlineOrder) return;
+
+            const checklistContainer = document.getElementById('pinned-items-checklist');
+            const statusBadge = document.getElementById('mission-status-badge');
+            if (!checklistContainer) return;
+
+            checklistContainer.innerHTML = '';
+            let allMatched = true;
+
+            currentOnlineOrder.items.forEach(reqItem => {
+                // Find matching item in cart
+                const matchedInCart = cart.find(c => c.id === reqItem.id && c.temp === reqItem.temp);
+                const currentQtyInCart = matchedInCart ? matchedInCart.qty : 0;
+
+                const isFullyMatched = (currentQtyInCart === reqItem.qty);
+                if (!isFullyMatched) allMatched = false;
+
+                const row = document.createElement('div');
+                row.className = `p-1.5 rounded-lg border flex justify-between items-center text-xs font-semibold ${isFullyMatched ? 'bg-green-950/80 border-green-500 text-green-200' : 'bg-gray-900/90 border-gray-700 text-gray-200'}`;
+                
+                row.innerHTML = `
+                    <div class="truncate mr-1">
+                        <span>${reqItem.icon} ${reqItem.name}${reqItem.temp ? `(${reqItem.temp})` : ''}</span>
+                    </div>
+                    <div class="shrink-0 font-extrabold ${isFullyMatched ? 'text-green-400' : (currentQtyInCart > reqItem.qty ? 'text-red-400' : 'text-yellow-400')}">
+                        ${currentQtyInCart}/${reqItem.qty}개 ${isFullyMatched ? '<i class="fa-solid fa-check ml-0.5"></i>' : ''}
+                    </div>
+                `;
+                checklistContainer.appendChild(row);
+            });
+
+            if (statusBadge) {
+                if (allMatched && cart.length === currentOnlineOrder.items.length) {
+                    statusBadge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-black bg-green-500 text-gray-900 animate-pulse";
+                    statusBadge.textContent = "🎯 요청 완성!";
+                } else {
+                    statusBadge.className = "px-2 py-0.5 rounded-full text-[10px] font-black bg-yellow-500 text-gray-900";
+                    statusBadge.textContent = "담는 중...";
+                }
+            }
+        }
+
+        function startManualKioskOrder() {
+            closeModal('modal-online-order');
+            showToast("👇 상단 요청 메시지를 참고하여 메뉴와 수량을 장바구니에 직접 담아보세요!");
+        }
+
+        function renderOnlineOrderModalUI() {
+            if (!currentOnlineOrder) return;
+
+            document.getElementById('online-sender-tag').textContent = currentOnlineOrder.senderTag;
+            document.getElementById('online-order-memo').textContent = `"${currentOnlineOrder.memo}"`;
+
+            const listEl = document.getElementById('online-order-item-list');
+            listEl.innerHTML = '';
+
+            let calculatedTotal = 0;
+
+            currentOnlineOrder.items.forEach((item) => {
+                const subtotal = item.price * item.qty;
+                calculatedTotal += subtotal;
+
+                const row = document.createElement('div');
+                row.className = "p-2.5 rounded-xl border bg-amber-50/80 border-amber-300 flex items-center justify-between";
+                row.innerHTML = `
+                    <div class="flex items-center space-x-2.5">
+                        <span class="text-base">${item.icon}</span>
+                        <div>
+                            <span class="font-extrabold text-gray-900">${item.name}</span>
+                            ${item.temp ? `<span class="text-xs font-bold ${item.temp==='ICE'?'text-blue-500':'text-red-500'}">(${item.temp})</span>` : ''}
+                            <div class="text-[11px] text-gray-500">${item.price.toLocaleString()}원 × ${item.qty}개</div>
+                        </div>
+                    </div>
+                    <div class="font-black text-right text-gray-900 text-xs sm:text-sm">
+                        ${subtotal.toLocaleString()}원
+                    </div>
+                `;
+                listEl.appendChild(row);
+            });
+
+            document.getElementById('online-order-total-price').textContent = calculatedTotal.toLocaleString();
+        }
+
+        function openOnlineOrderModal() {
+            if (!currentOnlineOrder) {
+                generateRandomOnlineOrder();
+            } else {
+                renderOnlineOrderModalUI();
+            }
+            openModal('modal-online-order');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast-msg');
+            const toastText = document.getElementById('toast-text');
+            if (toast && toastText) {
+                toastText.textContent = msg;
+                toast.classList.remove('hidden');
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 3500);
+            }
+        }
+
+        function openOrderConfirmModal() {
+            if (cart.length === 0) return;
+
+            const listEl = document.getElementById('confirm-item-list');
+            listEl.innerHTML = '';
+
+            let grandTotal = 0;
+            let grandQty = 0;
+
+            cart.forEach(item => {
+                const sum = item.price * item.qty;
+                grandTotal += sum;
+                grandQty += item.qty;
+
+                const itemRow = document.createElement('div');
+                itemRow.className = "flex justify-between items-center text-xs py-1 border-b border-gray-200 last:border-none";
+                itemRow.innerHTML = `
+                    <div>
+                        <span class="font-bold text-gray-800">${item.name} ${item.temp ? `(${item.temp})` : ''}</span>
+                        <span class="text-gray-400 ml-1">x${item.qty}</span>
+                    </div>
+                    <div class="font-black text-gray-900">
+                        ${item.price.toLocaleString()}원 × ${item.qty} = <span class="text-red-600">${sum.toLocaleString()}원</span>
+                    </div>
+                `;
+                listEl.appendChild(itemRow);
+            });
+
+            document.getElementById('confirm-dining').textContent = diningType === 'takeout' ? '포장하기' : '매장이용';
+            document.getElementById('confirm-count').textContent = grandQty;
+            document.getElementById('confirm-total').textContent = grandTotal.toLocaleString();
+
+            openModal('modal-order-confirm');
+        }
+
+        function openPaymentSelectModal() {
+            closeModal('modal-order-confirm');
+            openModal('modal-payment-select');
+        }
+
+        function processCardPayment() {
+            closeModal('modal-payment-select');
+            completePayment('신용/체크카드');
+        }
+
+        function openCashPaymentModal() {
+            closeModal('modal-payment-select');
+
+            const total = getCartGrandTotal();
+            document.getElementById('cash-required-amount').textContent = total.toLocaleString();
+
+            const btnContainer = document.getElementById('cash-note-buttons');
+            btnContainer.innerHTML = '';
+
+            const moneyOptions = [1000, 5000, 10000, 50000].filter(m => m >= total || m === 10000 || m === 50000);
+            if (!moneyOptions.includes(Math.ceil(total / 1000) * 1000)) {
+                moneyOptions.push(Math.ceil(total / 1000) * 1000);
+            }
+            const sortedOptions = [...new Set(moneyOptions)].sort((a,b) => a - b);
+
+            sortedOptions.forEach(amount => {
+                const btn = document.createElement('button');
+                btn.className = "py-2 px-1 bg-green-50 hover:bg-green-100 border border-green-300 text-green-900 font-extrabold text-xs rounded-xl transition-all";
+                btn.textContent = `${amount.toLocaleString()}원 제출`;
+                btn.onclick = () => selectCashGiven(amount);
+                btnContainer.appendChild(btn);
+            });
+
+            document.getElementById('change-input-section').classList.add('hidden');
+            document.getElementById('cash-math-feedback').classList.add('hidden');
+            document.getElementById('user-change-input').value = '';
+            
+            const btnComplete = document.getElementById('btn-complete-cash-pay');
+            btnComplete.disabled = true;
+            btnComplete.className = "py-2.5 px-5 bg-gray-300 text-gray-500 font-extrabold rounded-xl text-xs shadow cursor-not-allowed";
+
+            openModal('modal-cash-math');
+        }
+
+        function appendNumKey(val) {
+            const input = document.getElementById('user-change-input');
+            if (!input) return;
+            if (input.value.length < 7) {
+                input.value += val;
+            }
+        }
+
+        function clearNumKey() {
+            const input = document.getElementById('user-change-input');
+            if (input) input.value = '';
+        }
+
+        function backspaceNumKey() {
+            const input = document.getElementById('user-change-input');
+            if (input && input.value.length > 0) {
+                input.value = input.value.slice(0, -1);
+            }
+        }
+
+        function selectCashGiven(amount) {
+            const required = getCartGrandTotal();
+            const feedback = document.getElementById('cash-math-feedback');
+
+            if (amount < required) {
+                feedback.className = "mt-2 text-xs font-bold p-2.5 rounded-lg text-center bg-red-100 text-red-700 block";
+                feedback.textContent = `❌ 제출한 돈(${amount.toLocaleString()}원)이 필요한 금액(${required.toLocaleString()}원)보다 적습니다!`;
+                return;
+            }
+
+            cashGivenAmount = amount;
+            document.getElementById('cash-given-display').textContent = amount.toLocaleString();
+            document.getElementById('change-input-section').classList.remove('hidden');
+            document.getElementById('user-change-input').value = '';
+            feedback.classList.add('hidden');
+        }
+
+        function verifyChangeMath() {
+            const required = getCartGrandTotal();
+            const expectedChange = cashGivenAmount - required;
+            const userInput = parseInt(document.getElementById('user-change-input').value, 10);
+
+            const feedback = document.getElementById('cash-math-feedback');
+            feedback.classList.remove('hidden');
+
+            if (isNaN(userInput)) {
+                feedback.className = "mt-2 text-xs font-bold p-2.5 rounded-lg text-center bg-amber-100 text-amber-800";
+                feedback.textContent = "⚠️ 거스름돈 숫자를 입력해 주세요.";
+                return;
+            }
+
+            if (userInput === expectedChange) {
+                feedback.className = "mt-2 text-xs font-bold p-2.5 rounded-lg text-center bg-green-100 text-green-800";
+                feedback.innerHTML = `🎉 정답입니다! (${cashGivenAmount.toLocaleString()}원 - ${required.toLocaleString()}원 = <strong>${expectedChange.toLocaleString()}원</strong>)`;
+                
+                const btnComplete = document.getElementById('btn-complete-cash-pay');
+                btnComplete.disabled = false;
+                btnComplete.className = "py-2.5 px-5 bg-green-600 hover:bg-green-700 text-white font-extrabold rounded-xl text-xs shadow cursor-pointer transform active:scale-95";
+            } else {
+                feedback.className = "mt-2 text-xs font-bold p-2.5 rounded-lg text-center bg-red-100 text-red-800";
+                feedback.innerHTML = `❌ 계산이 틀렸습니다. 다시 계산해 보세요.<br>(${cashGivenAmount.toLocaleString()}원 - ${required.toLocaleString()}원 = ?)`;
+            }
+        }
+
+        function completePayment(method) {
+            closeModal('modal-cash-math');
+            closeModal('modal-payment-select');
+
+            const total = getCartGrandTotal();
+            const dateStr = new Date().toLocaleString('ko-KR');
+
+            document.getElementById('receipt-timestamp').textContent = dateStr;
+            document.getElementById('receipt-order-num').textContent = Math.floor(100 + Math.random() * 900);
+            document.getElementById('receipt-total-sum').textContent = `${total.toLocaleString()} 원`;
+            document.getElementById('receipt-pay-method').textContent = method;
+
+            const cashDetailsEl = document.getElementById('receipt-cash-details');
+            if (method === '현금결제') {
+                cashDetailsEl.classList.remove('hidden');
+                const change = cashGivenAmount - total;
+                document.getElementById('receipt-change-info').textContent = `${cashGivenAmount.toLocaleString()}원 / ${change.toLocaleString()}원`;
+            } else {
+                cashDetailsEl.classList.add('hidden');
+            }
+
+            const itemRowsEl = document.getElementById('receipt-item-rows');
+            itemRowsEl.innerHTML = '';
+            cart.forEach(item => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between";
+                row.innerHTML = `
+                    <span>${item.name} ${item.temp?`(${item.temp})`:''} x${item.qty}</span>
+                    <span>${(item.price * item.qty).toLocaleString()}원</span>
+                `;
+                itemRowsEl.appendChild(row);
+            });
+
+            openModal('modal-receipt');
+        }
+
+        function finishOrderAndReset() {
+            closeModal('modal-receipt');
+            clearCart();
+            generateRandomOnlineOrder(); // Generate a new order sheet for next practice
+        }
+
+        function generateQuizScenario() {
+            const feedbackEl = document.getElementById('quiz-feedback');
+            const btnNext = document.getElementById('btn-next-quiz');
+            feedbackEl.classList.add('hidden');
+            btnNext.classList.add('hidden');
+
+            // Select 2 to 4 random menu items with randomized quantities (1 to 4)
+            const count = Math.floor(Math.random() * 3) + 2;
+            const shuffled = [...menuData].sort(() => 0.5 - Math.random());
+            const selectedItems = shuffled.slice(0, count).map(m => ({
+                name: m.name,
+                price: m.price,
+                qty: Math.floor(Math.random() * 4) + 1
+            }));
+
+            let trueGrandTotal = 0;
+            const itemCalculations = selectedItems.map(i => {
+                const correctSub = i.price * i.qty;
+                trueGrandTotal += correctSub;
+                return {
+                    ...i,
+                    correctSubtotal: correctSub,
+                    displayedSubtotal: correctSub
+                };
+            });
+
+            // Calculate paid amount and change
+            const paidAmount = Math.ceil((trueGrandTotal + 1000) / 10000) * 10000;
+            const trueChange = paidAmount - trueGrandTotal;
+
+            // Error types: 0=No Error, 1=Multiplication Error, 2=Addition Error, 3=Subtraction Error
+            const errorType = Math.floor(Math.random() * 4);
+
+            let displayedItems = [...itemCalculations];
+            let displayedGrandTotal = trueGrandTotal;
+            let displayedChange = trueChange;
+            let errorDescription = "";
+            let mathStepsDetail = "";
+
+            if (errorType === 1) {
+                const errorIdx = Math.floor(Math.random() * displayedItems.length);
+                const wrongDiff = (Math.random() < 0.5 ? 1 : -1) * 1000;
+                displayedItems[errorIdx].displayedSubtotal += wrongDiff;
+                
+                errorDescription = `❌ 곱셈 오류: '${displayedItems[errorIdx].name}'의 계산 금액이 틀렸습니다! (${displayedItems[errorIdx].price.toLocaleString()}원 × ${displayedItems[errorIdx].qty}개 = ${(displayedItems[errorIdx].price * displayedItems[errorIdx].qty).toLocaleString()}원이어야 함)`;
+            } else if (errorType === 2) {
+                const wrongDiff = (Math.random() < 0.5 ? 1000 : -1000);
+                displayedGrandTotal += wrongDiff;
+                
+                errorDescription = `❌ 덧셈 오류: 청구 합계금액 계산이 틀렸습니다! (올바른 합계: ${trueGrandTotal.toLocaleString()}원)`;
+            } else if (errorType === 3) {
+                const wrongDiff = (Math.random() < 0.5 ? 1000 : -1000);
+                displayedChange += wrongDiff;
+                
+                errorDescription = `❌ 뺄셈 오류: 거스름돈 계산이 틀렸습니다! (${paidAmount.toLocaleString()}원 - ${displayedGrandTotal.toLocaleString()}원 = ${(paidAmount - displayedGrandTotal).toLocaleString()}원이어야 함)`;
+            } else {
+                errorDescription = "✅ 계산 정확: 이 영수증은 곱셈(단가×수량), 덧셈(합계), 뺄셈(거스름돈)이 모두 정답입니다.";
+            }
+
+            // Build detailed step-by-step mathematical breakdown for learning
+            let multStepText = itemCalculations.map(item => 
+                `• ${item.name}: ${item.price.toLocaleString()}원 × ${item.qty}개 = ${item.correctSubtotal.toLocaleString()}원`
+            ).join('<br>');
+
+            mathStepsDetail = `
+                <div class="mt-2 text-left bg-white/80 p-3 rounded-lg border border-gray-300 text-xs font-mono text-gray-800 space-y-1">
+                    <div class="font-extrabold text-blue-800">📊 [올바른 생활수학 단계별 풀이 과정]</div>
+                    <div><strong>1단계 (곱셈 - 품목별 금액):</strong><br>${multStepText}</div>
+                    <div><strong>2단계 (덧셈 - 총 합계):</strong> ${itemCalculations.map(i=>i.correctSubtotal.toLocaleString()).join(' + ')} = <strong>${trueGrandTotal.toLocaleString()}원</strong></div>
+                    <div><strong>3단계 (뺄셈 - 거스름돈):</strong> ${paidAmount.toLocaleString()}원 (낸 돈) - ${trueGrandTotal.toLocaleString()}원 (합계) = <strong>${trueChange.toLocaleString()}원</strong></div>
+                </div>
+            `;
+
+            currentQuizData = {
+                errorType: errorType,
+                errorDescription: errorDescription,
+                mathStepsDetail: mathStepsDetail
+            };
+
+            // Update DOM with new receipt details
+            const now = new Date();
+            const dateStr = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,'0') + "-" + String(now.getDate()).padStart(2,'0') + " " + String(now.getHours()).padStart(2,'0') + ":" + String(now.getMinutes()).padStart(2,'0') + ":" + String(now.getSeconds()).padStart(2,'0');
+            document.getElementById('quiz-receipt-date').textContent = dateStr;
+
+            const itemsContainer = document.getElementById('quiz-receipt-items');
+            itemsContainer.innerHTML = '';
+            displayedItems.forEach(item => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between";
+                row.innerHTML = `
+                    <span class="w-1/2 font-bold">${item.name}</span>
+                    <span class="w-1/6 text-right">${item.price.toLocaleString()}</span>
+                    <span class="w-1/6 text-right">${item.qty}</span>
+                    <span class="w-1/6 text-right font-black">${item.displayedSubtotal.toLocaleString()}원</span>
+                `;
+                itemsContainer.appendChild(row);
+            });
+
+            document.getElementById('quiz-receipt-subtotal').textContent = `${displayedGrandTotal.toLocaleString()} 원`;
+            document.getElementById('quiz-receipt-vat').textContent = `${Math.round(displayedGrandTotal / 11).toLocaleString()} 원`;
+            document.getElementById('quiz-receipt-paid').textContent = `${paidAmount.toLocaleString()} 원`;
+            document.getElementById('quiz-receipt-change').textContent = `${displayedChange.toLocaleString()} 원`;
+
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+
+            const choices = [
+                { type: 0, text: "✅ 오류 없음 (계산이 모두 정확함)" },
+                { type: 1, text: "❌ 메뉴 단가 × 수량 곱셈 오류" },
+                { type: 2, text: "❌ 청구 합계금액 덧셈 오류" },
+                { type: 3, text: "❌ 거스름돈 뺄셈 오류" }
+            ];
+
+            choices.forEach(choice => {
+                const btn = document.createElement('button');
+                btn.className = "quiz-opt-btn p-3 bg-white hover:bg-yellow-50 border-2 border-gray-200 hover:border-yellow-400 rounded-xl font-bold text-xs text-gray-800 transition-all text-left shadow-sm";
+                btn.textContent = choice.text;
+                btn.onclick = () => checkQuizAnswer(choice.type);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkQuizAnswer(selectedType) {
+            if (!currentQuizData) return;
+
+            const feedbackEl = document.getElementById('quiz-feedback');
+            const btnNext = document.getElementById('btn-next-quiz');
+            feedbackEl.classList.remove('hidden');
+
+            document.querySelectorAll('.quiz-opt-btn').forEach(btn => btn.disabled = true);
+
+            if (selectedType === currentQuizData.errorType) {
+                quizScore += 10;
+                document.getElementById('quiz-score').textContent = `${quizScore}점`;
+                feedbackEl.className = "mt-4 p-4 rounded-xl text-center text-sm font-bold bg-green-100 text-green-900 border-2 border-green-300 shadow-md";
+                feedbackEl.innerHTML = `🎉 정답입니다! (+10점)<br><span class="text-xs font-medium">${currentQuizData.errorDescription}</span>${currentQuizData.mathStepsDetail}`;
+            } else {
+                feedbackEl.className = "mt-4 p-4 rounded-xl text-center text-sm font-bold bg-red-100 text-red-900 border-2 border-red-300 shadow-md";
+                feedbackEl.innerHTML = `❌ 아쉽네요! 다시 확인해 보세요.<br><span class="text-xs font-medium">${currentQuizData.errorDescription}</span>${currentQuizData.mathStepsDetail}`;
+            }
+
+            btnNext.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
